@@ -84,8 +84,7 @@ mkJoinedRow activities person = do
     (Just matchingActivity) -> do
       let activityId = matchingActivity ^. rlens SId . unAttr
           activityName = matchingActivity ^. rlens SActivityName . unAttr
-      let x = (SId =:: activityId) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: activityName) :& RNil
-      (x :: Rec Attr ['Id, 'Name, 'Age, 'ActivityName])
+      (SId =:: activityId) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: activityName) :& RNil
     Nothing -> (SId =:: (negate 1)) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: "null") :& RNil
 
 
