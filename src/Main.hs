@@ -1,5 +1,7 @@
-{-# LANGUAGE DataKinds, PolyKinds, TypeOperators, TypeFamilies, FlexibleContexts, FlexibleInstances, NoMonomorphismRestriction, GADTs, TypeSynonymInstances, TemplateHaskell, StandaloneDeriving #-}
-
+{-# LANGUAGE ConstraintKinds, PartialTypeSignatures #-}
+{-# LANGUAGE DataKinds, PolyKinds, TypeOperators, TypeFamilies, FlexibleContexts, FlexibleInstances#-}
+{-# LANGUAGE NoMonomorphismRestriction, GADTs, TypeSynonymInstances, TemplateHaskell, StandaloneDeriving #-}
+{-# LANGUAGE TypeOperators, ScopedTypeVariables, DeriveDataTypeable, KindSignatures #-}
 module Main where
 
 import Data.Vinyl
@@ -8,6 +10,10 @@ import Data.Singletons.TH
 import Data.Maybe
 import Control.Monad
 import Data.Vinyl.TypeLevel (RIndex)
+import Data.Typeable
+import GHC.Exts (Constraint)
+
+type JoinOn a fields = (a ∈ fields)
 
 data Fields = Id | Name | Age | ActivityName deriving Show
 
@@ -72,22 +78,11 @@ activitieRows = [jonFootball, jonDancing, joyRacing]
 printActvy :: ('ActivityName ∈ fields) => Rec Attr fields -> IO ()
 printActvy r = print (r ^. rlens SActivityName)
 
-isInPplIdx :: ('Id ∈ fields) => [Int] -> Rec Attr fields -> Bool
-isInPplIdx peopleIdx actvyRow =  any (== True) . map (== actvyIdInt) $ peopleIdx
-  where actvyIdInt = actvyRow ^. rlens SId . unAttr
+-- TODO leave these as Attr's to compare so compariso works in the general case
+isInIdx field leftIdx rightRow =  any (== True) . map (== unAttrRightRow) $ leftIdx
+  where unAttrRightRow = rightRow ^. rlens field . unAttr
 
-
-mkJoinedRow :: (Eq (ElF r1),
-                                RElem
-                                  r1
-                                  ['Id, 'Name, 'Age]
-                                  (RIndex r1 ['Id, 'Name, 'Age]),
-                                RElem
-                                  r1
-                                  ['Id, 'ActivityName]
-                                  (RIndex r1 ['Id, 'ActivityName]),
-                                ElF r1 ~ Int) => sing1 r1 -> [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] ->  [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
--- mkJoinedRow :: _ -> [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] ->  [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
+-- TODO generalize mkJoinedRow if possible or require a typeclass instance of mkJoinedRow
 mkJoinedRow field activities person = do
   let name = person ^. rlens SName . unAttr
       age = person ^. rlens SAge . unAttr
@@ -100,26 +95,21 @@ mkJoinedRow field activities person = do
       (\actvy -> (SId =:: activityId actvy) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: activityName actvy) :& RNil) <$> filteredActivities
     Nothing -> []
 
-innerJoinOnId :: [Rec Attr ['Id, 'Name, 'Age]] -> [Rec Attr ['Id, 'ActivityName]] -> [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
-innerJoinOnId people activities = do
-  let peopleIdx =(\r -> r ^. rlens SId . unAttr) <$> people
-  let filteredActivites = filter (isInPplIdx peopleIdx) activities
-  join $ map (\p -> mkJoinedRow SId filteredActivites p) people
+innerJoinOn field people activities = do
+  let peopleIdx =(\r -> r ^. rlens field . unAttr) <$> people
+  let filteredActivites = filter (isInIdx field peopleIdx) activities
+  join $ map (\p -> mkJoinedRow field filteredActivites p) people
+
 
 main :: IO ()
-main = mapM_ print $ innerJoinOnId peopleRows activitieRows
+main = mapM_ print $ innerJoinOn SId peopleRows activitieRows
 
 -- example of main running:
 -- λ> peopleRows
 -- [{id: 1, name: "Joy", age: 28},{id: 0, name: "Jon", age: 23},{id: 2, name: "Karen", age: 15}]
 -- λ> activitieRows
 -- [{id: 0, activity: football},{id: 0, activity: dancing},{id: 1, activity: racing}]
--- λ> main
+-- λ> mapM_ print $ innerJoinOn SId peopleRows activitieRows
 -- {id: 1, name: "Joy", age: 28, activity: racing}
 -- {id: 0, name: "Jon", age: 23, activity: football}
 -- {id: 0, name: "Jon", age: 23, activity: dancing}
-
--- Code I wish worked:
-
--- λ> mapM_ print $ innerJoinOn SId peopleRows activitieRows
--- λ> mapM_ print $ innerJoinOn SName peopleRows activitieRows -- this line would give a compiler error about activitiesRows not containing 'Name
