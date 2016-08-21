@@ -118,3 +118,8 @@ main = mapM_ print $ innerJoinOnId peopleRows activitieRows
 -- {id: 1, name: "Joy", age: 28, activity: racing}
 -- {id: 0, name: "Jon", age: 23, activity: football}
 -- {id: 0, name: "Jon", age: 23, activity: dancing}
+
+-- Code I wish worked:
+
+-- λ> mapM_ print $ innerJoinOn SId peopleRows activitieRows
+-- λ> mapM_ print $ innerJoinOn SName peopleRows activitieRows -- this line would give a compiler error about activitiesRows not containing 'Name
