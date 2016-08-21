@@ -88,9 +88,8 @@ mkJoinedRow activities person = do
       (\actvy -> (SId =:: activityId actvy) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: activityName actvy) :& RNil) <$> filteredActivities
     Nothing -> []
 
-
-joinOnId :: [Rec Attr ['Id, 'Name, 'Age]] -> [Rec Attr ['Id, 'ActivityName]] -> [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
-joinOnId people activities = do
+innerJoinOnId :: [Rec Attr ['Id, 'Name, 'Age]] -> [Rec Attr ['Id, 'ActivityName]] -> [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
+innerJoinOnId people activities = do
   let peopleIdx =(\r -> r ^. rlens SId . unAttr) <$> people
   let filteredActivites = filter (isInPplIdx peopleIdx) activities
   join $ map (\p -> mkJoinedRow filteredActivites p) people
