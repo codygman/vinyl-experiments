@@ -13,7 +13,8 @@ import Data.Vinyl.TypeLevel (RIndex)
 import Data.Typeable
 import GHC.Exts (Constraint)
 
-type JoinOn a fields = (a ∈ fields)
+-- TODO might end up going this route
+-- type JoinOn a fields = (a ∈ fields)
 
 data Fields = Id | Name | Age | ActivityName deriving Show
 
