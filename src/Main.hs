@@ -75,12 +75,7 @@ isInPplIdx peopleIdx actvyRow =  any (== True) . map (== actvyIdInt) $ peopleIdx
   where actvyIdInt = actvyRow ^. rlens SId . unAttr
 
 mkJoinedRow :: [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] ->  Rec Attr ['Id, 'Name, 'Age, 'ActivityName]
--- mkJoinedRow :: [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] -> [Rec Attr ['Id, 'ActivityName]]
 mkJoinedRow activities person = do
-  -- TODO map over people, matching actvy from filtered actvys for extra info and constructing new Rec
-  -- (SId =:: 0) :& (SActivityName =:: "dancing") :& RNil
-  -- filterMap (\r -> r ^. rlens SId . unAttr == person ^. rlens SId .unAttr)
-
   let name = person ^. rlens SName . unAttr
       age = person ^. rlens SAge . unAttr
 
@@ -97,15 +92,7 @@ joinOnId :: [Rec Attr ['Id, 'Name, 'Age]] -> [Rec Attr ['Id, 'ActivityName]] -> 
 joinOnId people activities = do
   let peopleIdx =(\r -> r ^. rlens SId . unAttr) <$> people
   let filteredActivites = filter (isInPplIdx peopleIdx) activities
-  
-  -- TODO why does this give an error? mkJoinedRow returns a result that contains an 'Id
   map (\p -> mkJoinedRow filteredActivites p) people
-
-  -- undefined
-
-  -- filteredActivites
-  -- filteredActivites
-  -- print (filteredActivites)
 
 main :: IO ()
 main = do
