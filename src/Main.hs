@@ -9,7 +9,6 @@ import Data.Maybe
 import Control.Monad
 import Data.Vinyl.TypeLevel (RIndex)
 
-
 data Fields = Id | Name | Age | ActivityName deriving Show
 
 type Person = ['Id, 'Name, 'Age]
@@ -108,5 +107,4 @@ innerJoinOnId people activities = do
   join $ map (\p -> mkJoinedRow SId filteredActivites p) people
 
 main :: IO ()
-main = do
-  putStrLn "hello world"
+main = mapM_ print $ innerJoinOnId peopleRows activitieRows
