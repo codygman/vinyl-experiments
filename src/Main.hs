@@ -83,6 +83,7 @@ isInIdx field leftIdx rightRow =  any (== True) . map (== unAttrRightRow) $ left
   where unAttrRightRow = rightRow ^. rlens field . unAttr
 
 -- TODO generalize mkJoinedRow if possible or require a typeclass instance of mkJoinedRow
+-- TODO maybe we can just append fields or something
 mkJoinedRow field activities person = do
   let name = person ^. rlens SName . unAttr
       age = person ^. rlens SAge . unAttr
@@ -99,7 +100,6 @@ innerJoinOn field people activities = do
   let peopleIdx =(\r -> r ^. rlens field . unAttr) <$> people
   let filteredActivites = filter (isInIdx field peopleIdx) activities
   join $ map (\p -> mkJoinedRow field filteredActivites p) people
-
 
 main :: IO ()
 main = mapM_ print $ innerJoinOn SId peopleRows activitieRows
