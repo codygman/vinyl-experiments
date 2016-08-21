@@ -6,6 +6,7 @@ import Data.Vinyl
 import Control.Lens hiding (Identity)
 import Data.Singletons.TH
 import Data.Maybe
+import Control.Monad
 
 data Fields = Id | Name | Age | ActivityName deriving Show
 
@@ -74,25 +75,25 @@ isInPplIdx :: ('Id ∈ fields) => [Int] -> Rec Attr fields -> Bool
 isInPplIdx peopleIdx actvyRow =  any (== True) . map (== actvyIdInt) $ peopleIdx
   where actvyIdInt = actvyRow ^. rlens SId . unAttr
 
-mkJoinedRow :: [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] ->  Rec Attr ['Id, 'Name, 'Age, 'ActivityName]
+mkJoinedRow :: [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] ->  [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
 mkJoinedRow activities person = do
   let name = person ^. rlens SName . unAttr
       age = person ^. rlens SAge . unAttr
 
-  -- TODO we actually need to create a row for each activity found here, change the return type of this function to a [Rec Attr [..]], and update joinOnID accordingly. Until this is done you'll only get 1 activity per person which is almost always the wrong answer.
-  case listToMaybe $ filter (\r -> r ^. rlens SId . unAttr == person ^. rlens SId . unAttr) activities of
-    (Just matchingActivity) -> do
-      let activityId = matchingActivity ^. rlens SId . unAttr
-          activityName = matchingActivity ^. rlens SActivityName . unAttr
-      (SId =:: activityId) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: activityName) :& RNil
-    Nothing -> (SId =:: (negate 1)) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: "null") :& RNil
+  let filteredActivities = filter (\r -> r ^. rlens SId . unAttr == person ^. rlens SId . unAttr) activities
+  case listToMaybe filteredActivities of
+    Just _ -> do
+      let activityId actvy = actvy ^. rlens SId . unAttr
+          activityName actvy = actvy ^. rlens SActivityName . unAttr
+      (\actvy -> (SId =:: activityId actvy) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: activityName actvy) :& RNil) <$> filteredActivities
+    Nothing -> []
 
 
 joinOnId :: [Rec Attr ['Id, 'Name, 'Age]] -> [Rec Attr ['Id, 'ActivityName]] -> [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
 joinOnId people activities = do
   let peopleIdx =(\r -> r ^. rlens SId . unAttr) <$> people
   let filteredActivites = filter (isInPplIdx peopleIdx) activities
-  map (\p -> mkJoinedRow filteredActivites p) people
+  join $ map (\p -> mkJoinedRow filteredActivites p) people
 
 main :: IO ()
 main = do
