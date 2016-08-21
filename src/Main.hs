@@ -79,6 +79,7 @@ mkJoinedRow activities person = do
   let name = person ^. rlens SName . unAttr
       age = person ^. rlens SAge . unAttr
 
+  -- TODO we actually need to create a row for each activity found here, change the return type of this function to a [Rec Attr [..]], and update joinOnID accordingly. Until this is done you'll only get 1 activity per person which is almost always the wrong answer.
   case listToMaybe $ filter (\r -> r ^. rlens SId . unAttr == person ^. rlens SId . unAttr) activities of
     (Just matchingActivity) -> do
       let activityId = matchingActivity ^. rlens SId . unAttr
