@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DataKinds, PolyKinds, TypeOperators, TypeFamilies, FlexibleContexts, FlexibleInstances, NoMonomorphismRestriction, GADTs, TypeSynonymInstances, TemplateHaskell, StandaloneDeriving #-}
 
 module Main where
@@ -74,23 +73,21 @@ activitieRows = [jonFootball, jonDancing, joyRacing]
 printActvy :: ('ActivityName ∈ fields) => Rec Attr fields -> IO ()
 printActvy r = print (r ^. rlens SActivityName)
 
-isInPplIdx :: (RElem r fields (RIndex r fields), ElF r ~ Int) =>
-                             sing r -> [Int] -> Rec Attr fields -> Bool
-isInPplIdx field peopleIdx actvyRow =  any (== True) . map (== actvyIdInt) $ peopleIdx
-  where actvyIdInt = actvyRow ^. rlens field . unAttr
+isInPplIdx :: ('Id ∈ fields) => [Int] -> Rec Attr fields -> Bool
+isInPplIdx peopleIdx actvyRow =  any (== True) . map (== actvyIdInt) $ peopleIdx
+  where actvyIdInt = actvyRow ^. rlens SId . unAttr
 
 
 mkJoinedRow :: (Eq (ElF r1),
-                 RElem
-                 r1
-                 ['Id, 'Name, 'Age]
-                 (RIndex r1 ['Id, 'Name, 'Age]),
-                 RElem
-                 r1
-                 ['Id, 'ActivityName]
-                 (RIndex r1 ['Id, 'ActivityName]),
-                 ElF r1 ~ Int) =>
-               sing1 r1 -> [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] ->  [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
+                                RElem
+                                  r1
+                                  ['Id, 'Name, 'Age]
+                                  (RIndex r1 ['Id, 'Name, 'Age]),
+                                RElem
+                                  r1
+                                  ['Id, 'ActivityName]
+                                  (RIndex r1 ['Id, 'ActivityName]),
+                                ElF r1 ~ Int) => sing1 r1 -> [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] ->  [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
 -- mkJoinedRow :: _ -> [Rec Attr ['Id, 'ActivityName]] -> Rec Attr ['Id, 'Name, 'Age] ->  [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
 mkJoinedRow field activities person = do
   let name = person ^. rlens SName . unAttr
@@ -104,17 +101,11 @@ mkJoinedRow field activities person = do
       (\actvy -> (SId =:: activityId actvy) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: activityName actvy) :& RNil) <$> filteredActivities
     Nothing -> []
 
--- innerJoinOnId :: _ -> [Rec Attr ['Id, 'Name, 'Age]] -> [Rec Attr ['Id, 'ActivityName]] -> [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
-innerJoinOnId :: forall (sing1 :: Fields -> *) (r1 :: Fields).
-                       sing1 r1
-                       -> [Rec Attr ['Id, 'Name, 'Age]]
-                       -> [Rec Attr ['Id, 'ActivityName]]
-                       -> [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
-innerJoinOnId joinCol people activities = do
-  let peopleIdx  =(\r -> r ^. rlens joinCol . unAttr) <$> people
-  let filteredActivites = filter (isInPplIdx SId peopleIdx) activities
-  -- join $ map (\p -> mkJoinedRow joinCol filteredActivites p) people
-  undefined
+innerJoinOnId :: [Rec Attr ['Id, 'Name, 'Age]] -> [Rec Attr ['Id, 'ActivityName]] -> [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
+innerJoinOnId people activities = do
+  let peopleIdx =(\r -> r ^. rlens SId . unAttr) <$> people
+  let filteredActivites = filter (isInPplIdx peopleIdx) activities
+  join $ map (\p -> mkJoinedRow SId filteredActivites p) people
 
 main :: IO ()
 main = do
