@@ -108,3 +108,13 @@ innerJoinOnId people activities = do
 
 main :: IO ()
 main = mapM_ print $ innerJoinOnId peopleRows activitieRows
+
+-- example of main running:
+-- λ> peopleRows
+-- [{id: 1, name: "Joy", age: 28},{id: 0, name: "Jon", age: 23},{id: 2, name: "Karen", age: 15}]
+-- λ> activitieRows
+-- [{id: 0, activity: football},{id: 0, activity: dancing},{id: 1, activity: racing}]
+-- λ> main
+-- {id: 1, name: "Joy", age: 28, activity: racing}
+-- {id: 0, name: "Jon", age: 23, activity: football}
+-- {id: 0, name: "Jon", age: 23, activity: dancing}
