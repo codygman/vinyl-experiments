@@ -13,9 +13,6 @@ import Data.Vinyl.TypeLevel (RIndex)
 import Data.Typeable
 import GHC.Exts (Constraint)
 
--- TODO might end up going this route
--- type JoinOn a fields = (a ∈ fields)
-
 data Fields = Id | Name | Age | ActivityName deriving Show
 
 type Person = ['Id, 'Name, 'Age]
@@ -38,48 +35,33 @@ instance Show (Attr 'ActivityName) where show (Attr x) = "activity: " ++ x
 (=::) :: sing f -> ElF f -> Attr f
 _ =:: x = Attr x
 
-joy :: Rec Attr ['Id, 'Name, 'Age]
-joy = (SId =:: 1)
-   :& (SName =:: "Joy")
-   :& (SAge =:: 28)
-   :& RNil
-jon :: Rec Attr ['Id, 'Name, 'Age]
-jon = (SId =:: 0)
-   :& (SName =:: "Jon")
-   :& (SAge =:: 23)
-   :& RNil
-
-karen :: Rec Attr ['Id, 'Name, 'Age]
-karen = (SId =:: 2)
-   :& (SName =:: "Karen")
-   :& (SAge =:: 15)
-   :& RNil
-
-jonFootball :: Rec Attr ['Id, 'ActivityName]
-jonFootball = (SId =:: 0)
-           :& (SActivityName =:: "football")
-           :& RNil
-
-jonDancing :: Rec Attr ['Id, 'ActivityName]
-jonDancing = (SId =:: 0)
-           :& (SActivityName =:: "dancing")
-           :& RNil
-
-joyRacing :: Rec Attr ['Id, 'ActivityName]
-joyRacing = (SId =:: 1)
-           :& (SActivityName =:: "racing")
-           :& RNil
-
 peopleRows :: [Rec Attr ['Id, 'Name, 'Age]]
-peopleRows = [joy, jon, karen]
+peopleRows = [ (SId =:: 1)
+          :& (SName =:: "Joy")
+          :& (SAge =:: 28)
+          :& RNil
+          , (SId =:: 0)
+          :& (SName =:: "Jon")
+          :& (SAge =:: 23)
+          :& RNil
+          , (SId =:: 2)
+          :& (SName =:: "Karen")
+          :& (SAge =:: 15)
+          :& RNil
+          ]
 
-activitieRows :: [Rec Attr ['Id, 'ActivityName]]
-activitieRows = [jonFootball, jonDancing, joyRacing]
+activityRows :: [Rec Attr ['Id, 'ActivityName]]
+activityRows  = [ (SId =:: 0)
+                 :& (SActivityName =:: "football")
+                 :& RNil
+                 , (SId =:: 0)
+                 :& (SActivityName =:: "dancing")
+                 :& RNil
+                 , (SId =:: 1)
+                 :& (SActivityName =:: "racing")
+                 :& RNil
+                 ]
 
-printActvy :: ('ActivityName ∈ fields) => Rec Attr fields -> IO ()
-printActvy r = print (r ^. rlens SActivityName)
-
--- TODO leave these as Attr's to compare so compariso works in the general case
 isInIdx field leftIdx rightRow =  any (== True) . map (== unAttrRightRow) $ leftIdx
   where unAttrRightRow = rightRow ^. rlens field . unAttr
 
@@ -103,14 +85,14 @@ innerJoinOn field people activities = do
   join $ map (\p -> mkJoinedRow field filteredActivites p) people
 
 main :: IO ()
-main = mapM_ print $ innerJoinOn SId peopleRows activitieRows
+main = mapM_ print $ innerJoinOn SId peopleRows activityRows
 
 -- example of main running:
 -- λ> peopleRows
 -- [{id: 1, name: "Joy", age: 28},{id: 0, name: "Jon", age: 23},{id: 2, name: "Karen", age: 15}]
--- λ> activitieRows
+-- λ> activityRows
 -- [{id: 0, activity: football},{id: 0, activity: dancing},{id: 1, activity: racing}]
--- λ> mapM_ print $ innerJoinOn SId peopleRows activitieRows
+-- λ> mapM_ print $ innerJoinOn SId peopleRows activityRows
 -- {id: 1, name: "Joy", age: 28, activity: racing}
 -- {id: 0, name: "Jon", age: 23, activity: football}
 -- {id: 0, name: "Jon", age: 23, activity: dancing}
