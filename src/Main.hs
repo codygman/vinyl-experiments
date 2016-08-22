@@ -65,24 +65,73 @@ activityRows  = [ (SId =:: 0)
 isInIdx field leftIdx rightRow =  any (== True) . map (== unAttrRightRow) $ leftIdx
   where unAttrRightRow = rightRow ^. rlens field . unAttr
 
+
+-- exploration of mkJoinedRowHelper below
+-- λ> :t (SId =:: 0)
+-- (SId =:: 0) :: Attr 'Id
+-- λ> :t (:&) (SId =:: 0)
+-- (:&) (SId =:: 0) :: Rec Attr rs -> Rec Attr ('Id : rs)
+-- λ> :t fmap (:&) [(SId =:: 0)]
+-- fmap (:&) [(SId =:: 0)] :: [Rec Attr rs -> Rec Attr ('Id : rs)]
+-- λ> :t fmap (:&) [(SId =:: 0)]
+
+mkJoinedRowHelper
+  :: (Functor f, RElem r rs (RIndex r rs),
+      RElem 'ActivityName rs (RIndex 'ActivityName rs), ElF r ~ Int) =>
+     sing r
+     -> t
+     -> f (Rec Attr rs)
+     -> String
+     -> Int
+     -> f (Rec Attr ['Id, 'Name, 'Age, 'ActivityName])
+mkJoinedRowHelper field rightRow filteredLeftRows name age = do
+  let activityId actvy = actvy ^. rlens field . unAttr
+  let activityName actvy = actvy ^. rlens SActivityName . unAttr
+  (\actvy -> do
+      (SId =:: activityId actvy)
+        :& (SName =:: name)
+        :& (SAge =:: age)
+        :& (SActivityName =:: activityName actvy)
+        :& RNil)
+    <$> filteredLeftRows
+
+
+
 -- TODO generalize mkJoinedRow if possible or require a typeclass instance of mkJoinedRow
 -- TODO maybe we can just append fields or something
-mkJoinedRow field activities person = do
-  let name = person ^. rlens SName . unAttr
-      age = person ^. rlens SAge . unAttr
+mkJoinedRow field leftRows rightRow = do
+  let name = rightRow ^. rlens SName . unAttr
+      age = rightRow ^. rlens SAge . unAttr
 
-  let filteredActivities = filter (\r -> r ^. rlens field . unAttr == person ^. rlens field . unAttr) activities
-  case listToMaybe filteredActivities of
+  let filteredLeftRows = filter (\r -> r ^. rlens field . unAttr == rightRow ^. rlens field . unAttr) leftRows
+  case listToMaybe filteredLeftRows of
     Just _ -> do
-      let activityId actvy = actvy ^. rlens field . unAttr
-          activityName actvy = actvy ^. rlens SActivityName . unAttr
-      (\actvy -> (SId =:: activityId actvy) :& (SName =:: name) :& (SAge =:: age) :& (SActivityName =:: activityName actvy) :& RNil) <$> filteredActivities
+      -- let activityId actvy = actvy ^. rlens field . unAttr
+      -- let activityName actvy = actvy ^. rlens SActivityName . unAttr
+      -- (\actvy -> do
+      --     (SId =:: activityId actvy)
+      --     -- (SId =:: actvy ^. rlens field . unAttr)
+      --     :& (SName =:: name)
+      --     :& (SAge =:: age)
+      --     :& (SActivityName =:: activityName actvy)
+      --     :& RNil)
+      --   <$> filteredLeftRows
+      mkJoinedRowHelper field rightRow filteredLeftRows name age
     Nothing -> []
 
 innerJoinOn field people activities = do
   let peopleIdx =(\r -> r ^. rlens field . unAttr) <$> people
   let filteredActivites = filter (isInIdx field peopleIdx) activities
   join $ map (\p -> mkJoinedRow field filteredActivites p) people
+
+-- printActvy :: ('ActivityName ∈ fields) => Rec Attr fields -> IO ()
+printActvy
+  :: (
+      Show (f 'ActivityName),
+      'ActivityName ∈ rs
+     ) =>
+     Rec f rs -> IO ()
+printActvy r = print (r ^. rlens SActivityName)
 
 main :: IO ()
 main = mapM_ print $ innerJoinOn SId peopleRows activityRows
