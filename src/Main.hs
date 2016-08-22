@@ -87,6 +87,9 @@ isInIdx field leftIdx rightRow =  any (== True) . map (== unAttrRightRow) $ left
 --      -> String
 --      -> Int
 --      -> f (Rec Attr ['Id, 'Name, 'Age, 'ActivityName])
+-- TODO so we could just input a [(SId, RightRow),(SActvyName,LeftRow),...] having previously defined:
+-- data Rows = LeftRow | RightRow
+-- from there maybe we can either check both columns for existence in the general case or maybe there is a way of figuring it out
 mkJoinedRowHelper field rightRow filteredLeftRows = do
   (\actvy -> do
         rightRow ^. rlens field
