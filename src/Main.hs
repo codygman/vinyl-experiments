@@ -190,3 +190,16 @@ dependantEq a b = let (a',b') = dependantPair a' b' in a == b
 -- can maybe use constraints for this: http://hackage.haskell.org/package/constraints-0.8/docs/Data-Constraint.html
 
 -- reading the linked paper might help: http://research.microsoft.com/pubs/67439/gmap3.pdf
+
+data A = A { a1 :: Int }
+data B = B { b1 :: Int }
+data C = C { c1 :: String }
+
+a = A 1
+b = B 1
+c = C "test"
+
+staticCompare :: Eq a => t -> (t -> a) -> t1 -> (t1 -> a) -> Bool
+staticCompare leftRow leftJoinFunc  rightRow rightJoinFunc  = leftJoinFunc leftRow == rightJoinFunc rightRow
+
+-- TODO define staticIndex, staticJoin function (will have same params as staticCompare)
