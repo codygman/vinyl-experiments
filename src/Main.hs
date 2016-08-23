@@ -4,14 +4,16 @@
 {-# LANGUAGE TypeOperators, ScopedTypeVariables, DeriveDataTypeable, KindSignatures #-}
 module Main where
 
+-- import Data.Constraint
 import Data.Vinyl
 import Control.Lens hiding (Identity)
 import Data.Singletons.TH
 import Data.Maybe
 import Control.Monad
-import Data.Vinyl.TypeLevel (RIndex)
+import Data.Vinyl.TypeLevel 
 import Data.Typeable
 import GHC.Exts (Constraint)
+
 
 data Fields = Id | Name | Age | ActivityName deriving Show
 
@@ -132,6 +134,7 @@ mkJoinedRow field leftRows rightRow = do
 --      -> [Rec Attr rs]
 --      -> [Rec Attr rs1]
 --      -> [Rec Attr ['Id, 'Name, 'Age, 'ActivityName]]
+-- TODO all this needs to be is checking that both rlens's satisfy Eq a => left -> a -> right -> a -> joined and then appending all the fields together in a uniform order to form a product
 innerJoinOn field people activities = do
   let peopleIdx =(\r -> r ^. rlens field . unAttr) <$> people
   let filteredActivites = filter (isInIdx field peopleIdx) activities
@@ -146,6 +149,19 @@ innerJoinOn field people activities = do
 --      Rec f rs -> IO ()
 -- printActvy r = print (r ^. rlens SActivityName)
 
+
+data Remove xs x ys where
+  RemoveZ :: Remove (x ': xs) x xs
+  RemoveS :: Remove xs x ys -> Remove (y ': xs) x (y ': ys)
+
+remove :: Remove xs x ys -> Rec f xs -> (f x , Rec f ys)
+remove RemoveZ (x :& xs) = (x , xs)
+remove (RemoveS ix) (x :& xs) = let (y , ys) = remove ix xs in (y,x :& ys)
+
+innerJoinOn2 :: Eq (f x) => [Rec f xs1] -> [Rec f xs2] -> (Remove xs1 x ys1 , Remove xs2 x ys2) -> [Rec f (x ': ys1 ++ ys2)]
+innerJoinOn2 tbl1 tbl2 (ix1,ix2) = [ x :& ys1 <+> ys2 | (x , ys1) <- map (remove ix1) tbl1 , (x2 , ys2) <- map (remove ix2) tbl2 , x == x2 ]
+
+
 main :: IO ()
 main = do
   mapM_ print $ innerJoinOn SId peopleRows activityRows
@@ -159,3 +175,15 @@ main = do
 -- {id: 1, name: "Joy", age: 28, activity: racing}
 -- {id: 0, name: "Jon", age: 23, activity: football}
 -- {id: 0, name: "Jon", age: 23, activity: dancing}
+
+-- data DependantEq :: (Eq a, Eq b) => a b where
+--   DependantPair :: b ~ a => DependantPair a b
+
+dependantPair :: (Eq a, b ~ a) => a -> b -> (a,b)
+dependantPair a b = (a,b)
+
+dependantEq a b = let (a',b') = dependantPair a' b' in a == b
+
+-- can maybe use constraints for this: http://hackage.haskell.org/package/constraints-0.8/docs/Data-Constraint.html
+
+-- reading the linked paper might help: http://research.microsoft.com/pubs/67439/gmap3.pdf
