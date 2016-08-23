@@ -159,6 +159,9 @@ remove RemoveZ (x :& xs) = (x , xs)
 remove (RemoveS ix) (x :& xs) = let (y , ys) = remove ix xs in (y,x :& ys)
 
 innerJoinOn2 :: Eq (f x) => [Rec f xs1] -> [Rec f xs2] -> (Remove xs1 x ys1 , Remove xs2 x ys2) -> [Rec f (x ': ys1 ++ ys2)]
+-- usage example
+-- λ> innerJoinOn2 [Identity 1 :& Identity "foo" :& RNil, Identity 2 :& Identity "bar" :& RNil] [Identity 1 :& Identity 'a' :& RNil, Identity 2 :& Identity 'c' :& RNil] (RemoveZ , RemoveZ)
+-- [{Identity 1, Identity "foo", Identity 'a'},{Identity 2, Identity "bar", Identity 'c'}]
 innerJoinOn2 tbl1 tbl2 (ix1,ix2) = [ x :& ys1 <+> ys2 | (x , ys1) <- map (remove ix1) tbl1 , (x2 , ys2) <- map (remove ix2) tbl2 , x == x2 ]
 
 
